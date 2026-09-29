@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Port Logistics Terminal OS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root { --sidebar-w: 250px; --navy-dark: #0f172a; --accent-blue: #2563eb; }
+        body { background: #f8fafc; font-family: system-ui, -apple-system, sans-serif; }
+        #sidebar { width: var(--sidebar-w); height: 100vh; position: fixed; left: 0; top: 0; background: var(--navy-dark); z-index: 1000; }
+        #sidebar .brand { padding: 20px; font-weight: 700; color: #fff; font-size: 1.1rem; border-bottom: 1px solid #1e293b; }
+        #sidebar .nav-link { color: #94a3b8; padding: 13px 20px; display: flex; align-items: center; gap: 12px; cursor: pointer; border-left: 4px solid transparent; }
+        #sidebar .nav-link:hover, #sidebar .nav-link.active { color: #fff; background: #1e293b; border-left-color: var(--accent-blue); }
+        #main { margin-left: var(--sidebar-w); padding: 30px; }
+        .card-custom { background: #fff; border-radius: 12px; border: 1px solid #e2e8f0; padding: 22px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); }
+        .tab-content-panel { display: none; }
+        .tab-content-panel.active { display: block; }
+    </style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<div id="sidebar">
+    <div class="brand d-flex align-items-center gap-2">
+        <i class="fa-solid fa-anchor text-primary fs-4"></i>
+        <span>SmartPort OS</span>
+    </div>
+    <div class="nav flex-column mt-3">
+        <a class="nav-link active" onclick="navigate('overview', this)"><i class="fa-solid fa-chart-line"></i> Overview</a>
+        <a class="nav-link" onclick="navigate('master', this)"><i class="fa-solid fa-sliders"></i> Master Setup</a>
+        <a class="nav-link" onclick="navigate('intake', this)"><i class="fa-solid fa-truck-ramp-box"></i> Gate Intake OCR</a>
+        <a class="nav-link" onclick="navigate('finance', this)"><i class="fa-solid fa-file-invoice-dollar"></i> Finance & Billing</a>
+        <a class="nav-link" onclick="navigate('reports', this)"><i class="fa-solid fa-book-journal-whills"></i> Live Reports</a>
+    </div>
+</div>
+
+<!-- Main Workspace -->
+<div id="main">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="fw-bold mb-0 text-dark" id="page-title">Terminal Overview</h4>
+            <small class="text-muted">Real-time gate compliance, optical telemetry & ledger records</small>
+        </div>
+        <button class="btn btn-primary btn-sm px-3 shadow-sm" onclick="initCOA()">
+            <i class="fa-solid fa-bolt me-1"></i> Init Chart of Accounts
+        </button>
+    </div>
+
+    <!-- 1. OVERVIEW TAB -->
+    <div id="panel-overview" class="tab-content-panel active">
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="card-custom">
+                    <small class="text-muted fw-bold">BASE GATE FEE</small>
+                    <h3 class="fw-bold text-primary mt-1" id="dashBaseFee">$150.00</h3>
+                    <small class="text-secondary">Standard Intake</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card-custom">
+                    <small class="text-muted fw-bold">OVERWEIGHT FINE</small>
+                    <h3 class="fw-bold text-danger mt-1" id="dashSurcharge">$50.00</h3>
+                    <small class="text-secondary">Surcharge Penalty</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card-custom">
+                    <small class="text-muted fw-bold">WEIGHT THRESHOLD</small>
+                    <h3 class="fw-bold text-dark mt-1" id="dashMaxWeight">30.0 T</h3>
+                    <small class="text-secondary">Max Capacity Limit</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card-custom">
+                    <small class="text-muted fw-bold">TOTAL SCANS</small>
+                    <h3 class="fw-bold text-success mt-1" id="totalScansCount">0</h3>
+                    <small class="text-secondary">Ingested Containers</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-custom">
+            <h6 class="fw-bold mb-3"><i class="fa-solid fa-list me-2"></i>Live Container Telemetry Log</h6>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                    <tr>
+                        <th>OCR Code</th>
+                        <th>Gross Scale Weight</th>
+                        <th>Weight Limit</th>
+                        <th>Compliance</th>
+                        <th>Clearance Fee</th>
+                    </tr>
+                    </thead>
+                    <tbody id="telemetryFeed">
+                    <tr>
+                        <td colspan="5" class="text-center py-4 text-muted">No telemetry captured yet. Ingest scans in Gate Intake tab.</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. MASTER SETUP TAB -->
+    <div id="panel-master" class="tab-content-panel">
+        <div class="row g-4">
+            <div class="col-md-6">
+                <div class="card-custom">
+                    <h6 class="fw-bold mb-3"><i class="fa-solid fa-torii-gate me-2 text-primary"></i>Register Port Terminal Gate</h6>
+                    <form onsubmit="saveGate(event)">
+                        <div class="mb-2">
+                            <label class="form-label small fw-semibold">Gate Identifier</label>
+                            <input type="text" id="gCode" class="form-control" value="GATE-NORTH-01" required>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label small fw-semibold">Zone Title</label>
+                            <input type="text" id="gZone" class="form-control" value="Gate Terminal North Zone" required>
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col">
+                                <label class="form-label small fw-semibold">Max Weight (T)</label>
+                                <input type="number" step="0.1" id="gWeight" class="form-control" value="30.0" required>
+                            </div>
+                            <div class="col">
+                                <label class="form-label small fw-semibold">Base Fee ($)</label>
+                                <input type="number" id="gStdFee" class="form-control" value="150" required>
+                            </div>
+                            <div class="col">
+                                <label class="form-label small fw-semibold">Surcharge ($)</label>
+                                <input type="number" id="gSurFee" class="form-control" value="50" required>
+                            </div>
+                        </div>
+                        <button class="btn btn-dark w-100">Save Terminal Gate</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card-custom">
+                    <h6 class="fw-bold mb-3"><i class="fa-solid fa-address-book me-2 text-primary"></i>Register Carrier / Vendor</h6>
+                    <form onsubmit="saveContact(event)">
+                        <div class="mb-2">
+                            <label class="form-label small fw-semibold">Entity Name</label>
+                            <input type="text" id="cName" class="form-control" placeholder="Maersk Shipping Line" required>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label small fw-semibold">Category</label>
+                            <select id="cType" class="form-select">
+                                <option value="CUSTOMER">Carrier / Shipping Line (Customer)</option>
+                                <option value="VENDOR">Scale Maintenance / Security (Vendor)</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Email Contact</label>
+                            <input type="email" id="cEmail" class="form-control" placeholder="ops@carrier.com">
+                        </div>
+                        <button class="btn btn-dark w-100">Save Entity</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-custom">
+            <h6 class="fw-bold mb-3">Database Entities Configured</h6>
+            <ul id="registeredList" class="list-group list-group-flush small">
+                <li class="list-group-item text-muted">Create a gate or carrier to view live state here.</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- 3. GATE INTAKE TAB -->
+    <div id="panel-intake" class="tab-content-panel">
+        <div class="row g-4">
+            <div class="col-md-5">
+                <div class="card-custom">
+                    <h6 class="fw-bold mb-3"><i class="fa-solid fa-camera me-2 text-primary"></i>Ingest Telemetry Scan</h6>
+                    <form onsubmit="processScan(event)">
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Container OCR Code</label>
+                            <input type="text" id="ocrCode" class="form-control" value="MSCU-902148" required>
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col">
+                                <label class="form-label small fw-semibold">Gate</label>
+                                <select id="gateSelect" class="form-select" required>
+                                    <option value="1">Gate 1</option>
+                                </select>
+                            </div>
+                            <div class="col">
+                                <label class="form-label small fw-semibold">Carrier</label>
+                                <select id="carrierSelect" class="form-select" required>
+                                    <option value="1">Carrier 1</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Gross Weighbridge Telemetry (Tonnes)</label>
+                            <input type="number" step="0.1" id="grossWeight" class="form-control" value="34.8" required>
+                        </div>
+                        <button class="btn btn-primary w-100 py-2 fw-semibold">Process Ingestion</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="col-md-7">
+                <div class="card-custom">
+                    <h6 class="fw-bold mb-3">Gate Verification Voucher</h6>
+                    <div id="voucherContainer" class="p-4 text-center text-muted border rounded bg-light">
+                        <i class="fa-solid fa-barcode fs-1 mb-2 d-block opacity-25"></i>
+                        Waiting for optical gate scan input...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. FINANCE TAB -->
+    <div id="panel-finance" class="tab-content-panel">
+        <div class="row g-4 mb-4">
+            <div class="col-md-6">
+                <div class="card-custom">
+                    <h6 class="fw-bold text-success mb-2"><i class="fa-solid fa-receipt me-2"></i>Issue Customer Clearance Invoice</h6>
+                    <p class="small text-muted mb-3">Bills Carrier, posts double-entry transaction: Credits Gate Revenue & Debits Bank.</p>
+                    <div class="mb-2">
+                        <label class="form-label small fw-semibold">Select Carrier</label>
+                        <select id="billCarrierSelect" class="form-select mb-2">
+                            <option value="1">Carrier 1</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-outline-success w-100" onclick="payCustomerInvoice()">Generate Carrier Invoice ($200)</button>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card-custom">
+                    <h6 class="fw-bold text-warning mb-2"><i class="fa-solid fa-screwdriver-wrench me-2"></i>Settle Scale Maintenance</h6>
+                    <p class="small text-muted mb-3">Executes PO to Vendor Bill flow and deducts payment from Bank asset balance.</p>
+                    <div class="mb-2">
+                        <label class="form-label small fw-semibold">Select Vendor</label>
+                        <select id="billVendorSelect" class="form-select mb-2">
+                            <option value="2">Vendor 2</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-outline-warning w-100 text-dark" onclick="payVendorBill()">Disburse Calibration Fee ($500)</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Double-entry Table with Clear Button -->
+        <div class="card-custom">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="fw-bold mb-0"><i class="fa-solid fa-file-invoice me-2"></i>Double-Entry Audit Transactions</h6>
+                <button type="button" class="btn btn-outline-danger btn-sm" onclick="clearTableUI()">
+                    <i class="fa-solid fa-trash me-1"></i> Clear Log View
+                </button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                    <tr>
+                        <th>Invoice/Bill Ref</th>
+                        <th>Type</th>
+                        <th>Entity</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                    </tr>
+                    </thead>
+                    <tbody id="invoiceTableBody">
+                    <tr>
+                        <td colspan="5" class="text-center py-4 text-muted">No invoices settled yet. Use the action cards above.</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. REPORTS TAB -->
+    <div id="panel-reports" class="tab-content-panel">
+        <div class="card-custom">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="fw-bold mb-0">Financial & Budget Statements</h6>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-dark" onclick="fetchBalanceSheet()">Balance Sheet</button>
+                    <button class="btn btn-dark" onclick="fetchPL()">Profit & Loss</button>
+                    <button class="btn btn-dark" onclick="fetchBudget()">Budget Report</button>
+                </div>
+            </div>
+            <div id="reportDisplay" class="p-3 bg-light rounded">
+                <span class="text-muted small">Select any report statement above to calculate live balances.</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API = 'http://localhost:8080/api/port';
+    let scanCount = 0;
+
+    function navigate(tabId, elem) {
+        document.querySelectorAll('.tab-content-panel').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('#sidebar .nav-link').forEach(l => l.classList.remove('active'));
+        document.getElementById('panel-' + tabId).classList.add('active');
+        elem.classList.add('active');
+        document.getElementById('page-title').innerText = elem.innerText.trim();
+    }
+
+    async function initCOA() {
+        try {
+            const res = await fetch(`${API}/init-coa`, { method: 'POST' });
+            const txt = await res.text();
+            alert(txt);
+        } catch(e) {
+            alert('Connection Error! Run the Spring Boot project on port 8080.');
+        }
+    }
+
+    async function saveGate(e) {
+        e.preventDefault();
+        const body = {
+            gateCode: document.getElementById('gCode').value,
+            zoneName: document.getElementById('gZone').value,
+            maxWeightRatingTonnes: parseFloat(document.getElementById('gWeight').value),
+            standardClearanceFee: parseFloat(document.getElementById('gStdFee').value),
+            overweightSurchargeFee: parseFloat(document.getElementById('gSurFee').value)
+        };
+        const res = await fetch(`${API}/gates`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(body)
+        });
+        const d = await res.json();
+
+        document.getElementById('dashBaseFee').innerText = `$${d.standardClearanceFee.toFixed(2)}`;
+        document.getElementById('dashSurcharge').innerText = `$${d.overweightSurchargeFee.toFixed(2)}`;
+        document.getElementById('dashMaxWeight').innerText = `${d.maxWeightRatingTonnes} T`;
+
+        const opt = document.createElement('option');
+        opt.value = d.id;
+        opt.innerText = `${d.gateCode} (ID: ${d.id})`;
+        document.getElementById('gateSelect').appendChild(opt);
+
+        appendEntity(`✅ Gate Terminal: <b>${d.gateCode}</b> (${d.zoneName}) - Max Limit: ${d.maxWeightRatingTonnes}T | Gate ID: <b>${d.id}</b>`);
+        alert('Gate Saved in Database! ID: ' + d.id);
+    }
+
+    async function saveContact(e) {
+        e.preventDefault();
+        const body = {
+            name: document.getElementById('cName').value,
+            type: document.getElementById('cType').value,
+            email: document.getElementById('cEmail').value
+        };
+        const res = await fetch(`${API}/contacts`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(body)
+        });
+        const d = await res.json();
+
+        const opt = document.createElement('option');
+        opt.value = d.id;
+        opt.innerText = `${d.name} (ID: ${d.id})`;
+
+        if (d.type === 'CUSTOMER') {
+            document.getElementById('carrierSelect').appendChild(opt);
+            document.getElementById('billCarrierSelect').appendChild(opt.cloneNode(true));
+        } else {
+            document.getElementById('billVendorSelect').appendChild(opt);
+        }
+
+        appendEntity(`👤 Contact: <b>${d.name}</b> (${d.type}) | Contact ID: <b>${d.id}</b>`);
+        alert('Contact Saved in Database! ID: ' + d.id);
+    }
+
+    function appendEntity(msg) {
+        const list = document.getElementById('registeredList');
+        if (list.innerText.includes('Create a gate')) list.innerHTML = '';
+        list.innerHTML += `<li class="list-group-item">${msg}</li>`;
+    }
+
+    async function processScan(e) {
+        e.preventDefault();
+        const body = {
+            containerOcrCode: document.getElementById('ocrCode').value,
+            gateId: parseInt(document.getElementById('gateSelect').value),
+            carrierId: parseInt(document.getElementById('carrierSelect').value),
+            grossWeightTonnes: parseFloat(document.getElementById('grossWeight').value)
+        };
+        const res = await fetch(`${API}/gate-in`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(body)
+        });
+        const d = await res.json();
+
+        const badge = d.overweight
+            ? '<span class="badge bg-danger">OVERWEIGHT FLAGGED</span>'
+            : '<span class="badge bg-success">COMPLIANT</span>';
+
+        document.getElementById('voucherContainer').innerHTML = `
+                <div class="text-start">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="fw-bold text-dark mb-0">${d.containerOcrCode}</h5>
+                        ${badge}
+                    </div>
+                    <div class="row g-2 small border-top pt-2">
+                        <div class="col-6 text-muted">Telemetry Scale Gross:</div>
+                        <div class="col-6 fw-bold text-end">${d.grossWeightTonnes} T (Max: ${d.maxAllowedWeightTonnes} T)</div>
+                        <div class="col-6 text-muted">Standard Fee:</div>
+                        <div class="col-6 fw-bold text-end">$${d.standardFee}</div>
+                        <div class="col-6 text-muted">Overweight Surcharge:</div>
+                        <div class="col-6 fw-bold text-end">$${d.surchargeFee}</div>
+                        <div class="col-12"><hr class="my-1"></div>
+                        <div class="col-6 fs-6 fw-bold">Total Tariff Payable:</div>
+                        <div class="col-6 fs-6 fw-bold text-end text-primary">$${d.totalAmount}</div>
+                    </div>
+                </div>
+            `;
+
+        const feed = document.getElementById('telemetryFeed');
+        if (feed.innerText.includes('No telemetry')) feed.innerHTML = '';
+        feed.innerHTML = `
+                <tr>
+                    <td class="fw-bold">${d.containerOcrCode}</td>
+                    <td>${d.grossWeightTonnes} T</td>
+                    <td>${d.maxAllowedWeightTonnes} T</td>
+                    <td>${badge}</td>
+                    <td class="fw-bold text-dark">$${d.totalAmount}</td>
+                </tr>
+            ` + feed.innerHTML;
+
+        scanCount++;
+        document.getElementById('totalScansCount').innerText = scanCount;
+        alert('Container Gate-In Intake Processed & Stored in DB!');
+    }
+
+    async function payCustomerInvoice() {
+        const carrierId = document.getElementById('billCarrierSelect').value;
+        const res = await fetch(`${API}/invoices/customer?carrierId=${carrierId}&standardFee=150&surchargeFee=50`, { method: 'POST' });
+        const d = await res.json();
+
+        appendAuditInvoice(d.invoiceNumber, 'Customer Invoice', d.contact?.name || 'Carrier', d.amount, 'PAID (Bank Credited)');
+        alert(`Customer Invoice ${d.invoiceNumber} posted to Ledger for $${d.amount}`);
+    }
+
+    async function payVendorBill() {
+        const vendorId = document.getElementById('billVendorSelect').value;
+        const poRes = await fetch(`${API}/purchase-orders?vendorId=${vendorId}&description=Weighbridge%20Calibration&amount=500`, { method: 'POST' });
+        const po = await poRes.json();
+
+        const billRes = await fetch(`${API}/purchase-orders/${po.id}/pay`, { method: 'POST' });
+        const d = await billRes.json();
+
+        appendAuditInvoice(d.invoiceNumber, 'Vendor Bill (Maintenance)', d.contact?.name || 'Vendor', d.amount, 'PAID (Bank Debited)');
+        alert(`Vendor Bill ${d.invoiceNumber} disbursed through Bank for $${d.amount}`);
+    }
+
+    function appendAuditInvoice(ref, type, name, amount, status) {
+        const table = document.getElementById('invoiceTableBody');
+        if (table.innerText.includes('No invoices')) table.innerHTML = '';
+        table.innerHTML = `
+                <tr>
+                    <td class="fw-bold font-monospace">${ref}</td>
+                    <td>${type}</td>
+                    <td>${name}</td>
+                    <td class="fw-bold text-dark">$${amount}</td>
+                    <td><span class="badge bg-success">${status}</span></td>
+                </tr>
+            ` + table.innerHTML;
+    }
+
+    function clearTableUI() {
+        document.getElementById('invoiceTableBody').innerHTML = `
+                <tr>
+                    <td colspan="5" class="text-center py-4 text-muted">No invoices settled yet. Use the action cards above.</td>
+                </tr>
+            `;
+    }
+
+    async function fetchBalanceSheet() {
+        const res = await fetch(`${API}/reports/balance-sheet`);
+        const d = await res.json();
+        let assetsHtml = Object.entries(d.assets).map(([k, v]) => `<tr><td>${k}</td><td class="text-end fw-bold">$${v}</td></tr>`).join('');
+        let liabHtml = Object.entries(d.liabilities).map(([k, v]) => `<tr><td>${k}</td><td class="text-end fw-bold">$${v}</td></tr>`).join('');
+
+        document.getElementById('reportDisplay').innerHTML = `
+                <h6 class="fw-bold text-primary mb-3">Balance Sheet Statement</h6>
+                <div class="row">
+                    <div class="col-md-6">
+                        <table class="table table-sm">
+                            <thead class="table-light"><tr><th>Asset Accounts</th><th class="text-end">Balance</th></tr></thead>
+                            <tbody>${assetsHtml}</tbody>
+                            <tfoot><tr class="table-success fw-bold"><td>Total Assets</td><td class="text-end">$${d.totalAssets}</td></tr></tfoot>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <table class="table table-sm">
+                            <thead class="table-light"><tr><th>Liabilities</th><th class="text-end">Balance</th></tr></thead>
+                            <tbody>${liabHtml}</tbody>
+                            <tfoot><tr class="table-secondary fw-bold"><td>Net Worth</td><td class="text-end">$${d.netWorth}</td></tr></tfoot>
+                        </table>
+                    </div>
+                </div>
+            `;
+    }
+
+    async function fetchPL() {
+        const res = await fetch(`${API}/reports/profit-and-loss`);
+        const d = await res.json();
+        let revHtml = Object.entries(d.revenues).map(([k, v]) => `<tr><td>${k}</td><td class="text-end text-success fw-bold">+$${v}</td></tr>`).join('');
+        let expHtml = Object.entries(d.expenses).map(([k, v]) => `<tr><td>${k}</td><td class="text-end text-danger fw-bold">-$${v}</td></tr>`).join('');
+
+        document.getElementById('reportDisplay').innerHTML = `
+                <h6 class="fw-bold text-primary mb-3">Profit & Loss Account</h6>
+                <table class="table table-sm">
+                    <thead class="table-light"><tr><th>Ledger Description</th><th class="text-end">Amount</th></tr></thead>
+                    <tbody>${revHtml}${expHtml}</tbody>
+                    <tfoot><tr class="table-info fw-bold"><td>Net Operating Profit</td><td class="text-end">$${d.netProfit}</td></tr></tfoot>
+                </table>
+            `;
+    }
+
+    async function fetchBudget() {
+        const res = await fetch(`${API}/reports/budget?gateId=1&fiscalYear=2026`);
+        const d = await res.json();
+        document.getElementById('reportDisplay').innerHTML = `
+                <h6 class="fw-bold text-primary mb-3">Port Terminal Budget Report (FY ${d.fiscalYear})</h6>
+                <table class="table table-bordered table-sm">
+                    <thead class="table-light"><tr><th>Metric</th><th>Planned</th><th>Actual Throughput</th><th>Variance</th></tr></thead>
+                    <tbody>
+                        <tr><td>Revenues</td><td>$${d.plannedRevenue}</td><td class="text-success fw-bold">$${d.actualRevenue}</td><td>$${d.revenueVariance}</td></tr>
+                        <tr><td>Expenses</td><td>$${d.plannedExpense}</td><td class="text-danger fw-bold">$${d.actualExpense}</td><td>$${d.expenseVariance}</td></tr>
+                    </tbody>
+                </table>
+            `;
+    }
+</script>
+</body>
+</html>

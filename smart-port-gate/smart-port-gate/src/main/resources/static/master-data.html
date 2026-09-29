@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Master Data Registration</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark px-4">
+    <a class="navbar-brand fw-bold" href="index.html">Smart Port Gate System</a>
+    <div class="navbar-nav ms-auto">
+        <a class="nav-link" href="index.html">Dashboard</a>
+        <a class="nav-link active" href="master-data.html">Master Data</a>
+        <a class="nav-link" href="gate-in.html">Gate-In Intake</a>
+        <a class="nav-link" href="finance-reports.html">Finance & Reports</a>
+    </div>
+</nav>
+
+<div class="container my-4">
+    <h3 class="mb-4 text-primary">Master Data Setup</h3>
+    <div class="row">
+        <!-- Add Gate Terminal -->
+        <div class="col-md-6">
+            <div class="card shadow-sm p-4">
+                <h5 class="fw-bold">Register Port Terminal Gate</h5>
+                <form onsubmit="saveGate(event)">
+                    <div class="mb-2">
+                        <label class="form-label">Gate Code</label>
+                        <input type="text" id="gCode" class="form-control" placeholder="GATE-NORTH-1" required>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Terminal Zone</label>
+                        <input type="text" id="gZone" class="form-control" value="Gate Terminal North Zone" required>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Max Allowed Weight (Tonnes)</label>
+                        <input type="number" step="0.1" id="gWeight" class="form-control" value="30.0" required>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Standard Fee ($)</label>
+                        <input type="number" id="gStdFee" class="form-control" value="150" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Overweight Surcharge ($)</label>
+                        <input type="number" id="gSurFee" class="form-control" value="50" required>
+                    </div>
+                    <button class="btn btn-primary w-100">Save Terminal Gate</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Add Carrier/Vendor -->
+        <div class="col-md-6">
+            <div class="card shadow-sm p-4">
+                <h5 class="fw-bold">Register Contact (Carrier / Vendor)</h5>
+                <form onsubmit="saveContact(event)">
+                    <div class="mb-2">
+                        <label class="form-label">Entity Name</label>
+                        <input type="text" id="cName" class="form-control" placeholder="Maersk Shipping Line" required>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Contact Type</label>
+                        <select id="cType" class="form-select">
+                            <option value="CUSTOMER">Shipping Line Carrier (Customer)</option>
+                            <option value="VENDOR">Scale Maintenance / Security (Vendor)</option>
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Email</label>
+                        <input type="email" id="cEmail" class="form-control" placeholder="ops@carrier.com">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Phone</label>
+                        <input type="text" id="cPhone" class="form-control" placeholder="+91 9876543210">
+                    </div>
+                    <button class="btn btn-dark w-100">Save Contact</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    async function saveGate(e) {
+        e.preventDefault();
+        const body = {
+            gateCode: document.getElementById('gCode').value,
+            zoneName: document.getElementById('gZone').value,
+            maxWeightRatingTonnes: parseFloat(document.getElementById('gWeight').value),
+            standardClearanceFee: parseFloat(document.getElementById('gStdFee').value),
+            overweightSurchargeFee: parseFloat(document.getElementById('gSurFee').value)
+        };
+        const res = await fetch('/api/port/gates', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        alert('Saved to DB! Gate ID: ' + data.id);
+        e.target.reset();
+    }
+
+    async function saveContact(e) {
+        e.preventDefault();
+        const body = {
+            name: document.getElementById('cName').value,
+            type: document.getElementById('cType').value,
+            email: document.getElementById('cEmail').value,
+            phone: document.getElementById('cPhone').value
+        };
+        const res = await fetch('/api/port/contacts', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        alert('Saved to DB! Contact ID: ' + data.id);
+        e.target.reset();
+    }
+</script>
+</body>
+</html>

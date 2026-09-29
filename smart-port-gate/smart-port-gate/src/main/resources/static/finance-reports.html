@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Finance & Reports</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>pre { background: #212529; color: #39ff14; padding: 15px; border-radius: 8px; }</style>
+</head>
+<body class="bg-light">
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark px-4">
+    <a class="navbar-brand fw-bold" href="index.html">Smart Port Gate System</a>
+    <div class="navbar-nav ms-auto">
+        <a class="nav-link" href="index.html">Dashboard</a>
+        <a class="nav-link" href="master-data.html">Master Data</a>
+        <a class="nav-link" href="gate-in.html">Gate-In Intake</a>
+        <a class="nav-link active" href="finance-reports.html">Finance & Reports</a>
+    </div>
+</nav>
+
+<div class="container my-4">
+    <h3 class="mb-4 text-primary">Financial Settlement & Analytical Reports</h3>
+
+    <!-- Action Row -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-6">
+            <div class="card shadow-sm p-3">
+                <h6>1. Settle Shipping Line Invoice</h6>
+                <button class="btn btn-success btn-sm" onclick="payCustomerInvoice()">Issue Clearance Invoice ($200)</button>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card shadow-sm p-3">
+                <h6>2. Pay Scale Calibration (Vendor PO Flow)</h6>
+                <button class="btn btn-warning btn-sm" onclick="payVendorBill()">Pay Weighbridge Vendor ($500)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reports Viewer -->
+    <div class="card shadow-sm p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="fw-bold mb-0">Financial Statements Viewer</h5>
+            <div class="btn-group">
+                <button class="btn btn-outline-primary" onclick="loadReport('/api/port/reports/balance-sheet')">Balance Sheet</button>
+                <button class="btn btn-outline-primary" onclick="loadReport('/api/port/reports/profit-and-loss')">Profit & Loss</button>
+                <button class="btn btn-outline-primary" onclick="loadReport('/api/port/reports/budget?gateId=1&fiscalYear=2026')">Budget Report</button>
+            </div>
+        </div>
+        <pre id="reportBox">Click any button above to generate double-entry financial statements...</pre>
+    </div>
+</div>
+
+<script>
+    async function payCustomerInvoice() {
+        const res = await fetch('/api/port/invoices/customer?carrierId=1&standardFee=150&surchargeFee=50', { method: 'POST' });
+        const data = await res.json();
+        alert(`Customer Invoice ${data.invoiceNumber} recorded! Bank credited $${data.amount}`);
+    }
+
+    async function payVendorBill() {
+        const poRes = await fetch('/api/port/purchase-orders?vendorId=2&description=Weighbridge%20Calibration&amount=500', { method: 'POST' });
+        const po = await poRes.json();
+        const billRes = await fetch(`/api/port/purchase-orders/${po.id}/pay`, { method: 'POST' });
+        const bill = await billRes.json();
+        alert(`Vendor Bill ${bill.invoiceNumber} paid! Outlay posted to ledger.`);
+    }
+
+    async function loadReport(url) {
+        const res = await fetch(url);
+        const data = await res.json();
+        document.getElementById('reportBox').innerText = JSON.stringify(data, null, 4);
+    }
+</script>
+</body>
+</html>
